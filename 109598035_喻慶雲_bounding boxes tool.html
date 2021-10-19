@@ -92,6 +92,8 @@
 		let mesh, helper;
 		let line1, line2, line3, line4, line5, line6, line7, line8;
 		let points1, points2, points3, points4;
+		let isHoldLine1 = false, isHoldLine2 = false, isHoldLine3 = false, isHoldLine4 = false;
+		let isDoneLine1 = false, isDoneLine2 = false, isDoneLine3 = false, isDoneLine4 = false;
 		let modelIdx = 0, isZoom = false, mouse = new THREE.Vector3();
 
 		const vpds = [];
@@ -212,6 +214,7 @@
 
 			window.addEventListener('resize', onWindowResize);
 			document.addEventListener('mousemove', onMouseMove, false);
+			document.addEventListener('mouseup', onMouseUp, false);
 			document.addEventListener('keyup', onDocumentKeyUp);
 
 			// 鏡頭控制
@@ -358,60 +361,72 @@
 				// 1
 				if (keyCode === 49) {
 					if (line1 !== undefined) scene.remove(line1);
+					if (line5 !== undefined) scene.remove(line5);
 					points1 = [];
 					points1.push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
 					points1.push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
 					line1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1), new THREE.LineBasicMaterial({ color: 0xff0000 }));
 					scene.add(line1);
+					isHoldLine1 = true;
+					isDoneLine1 = false;
 				}
 				// 2
 				if (keyCode === 50) {
 					if (line2 !== undefined) scene.remove(line2);
+					if (line6 !== undefined) scene.remove(line6);
 					points2 = [];
 					points2.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
 					points2.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
 					line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
 					scene.add(line2);
+					isHoldLine2 = true;
+					isDoneLine2 = false;
 				}
 				// 3
 				if (keyCode === 51) {
 					if (line3 !== undefined) scene.remove(line3);
+					if (line7 !== null) scene.remove(line7);
 					points3 = [];
 					points3.push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
 					points3.push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
 					line3 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points3), new THREE.LineBasicMaterial({ color: 0xff0000 }));
 					scene.add(line3);
+					isHoldLine3 = true;
+					isDoneLine3 = false;
 				}
 				// 4
 				if (keyCode === 52) {
 					if (line4 !== undefined) scene.remove(line4);
+					if (line8 !== undefined) scene.remove(line8);
 					points4 = [];
 					points4.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
 					points4.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
 					line4 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points4), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
 					scene.add(line4);
+					isHoldLine4 = true;
+					isDoneLine4 = false;
 				}
 				// Q
 				if (keyCode === 81) {
-					if (line1 !== undefined) {
+					if (isDoneLine1) {
 						if (line5 !== undefined) scene.remove(line5);
 						line5 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1), new THREE.LineBasicMaterial({ color: 0x800080 }));
 						line5.scale.multiply(new THREE.Vector3(-1, 1, 1));
 						scene.add(line5);
 					}
-					if (line2 !== undefined) {
+					if (isDoneLine2) {
 						if (line6 !== undefined) scene.remove(line6);
 						line6 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2), new THREE.LineBasicMaterial({ color: 0x87cefa }));
 						line6.scale.multiply(new THREE.Vector3(-1, 1, 1));
 						scene.add(line6);
 					}
-					if (line3 !== undefined) {
+					if (isDoneLine3) {
 						if (line7 !== null) scene.remove(line7);
 						line7 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points3), new THREE.LineBasicMaterial({ color: 0x800080 }));
 						line7.scale.multiply(new THREE.Vector3(-1, 1, 1));
 						scene.add(line7);
 					}
-					if (line4 !== undefined) {
+					if (isDoneLine4) {
 						if (line8 !== undefined) scene.remove(line8);
 						line8 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points4), new THREE.LineBasicMaterial({ color: 0x87cefa }));
 						line8.scale.multiply(new THREE.Vector3(-1, 1, 1));
@@ -443,10 +458,10 @@
 				// S
 				if (keyCode === 83) {
 					let coordinates = [];
-					if (line1 !== undefined && line2 !== undefined) coordinates.push(checkLineIntersection(points1[0].x, points1[0].y, points1[1].x, points1[1].y, points2[0].x, points2[0].y, points2[1].x, points2[1].y));
-					if (line2 !== undefined && line3 !== undefined) coordinates.push(checkLineIntersection(points2[0].x, points2[0].y, points2[1].x, points2[1].y, points3[0].x, points3[0].y, points3[1].x, points3[1].y));
-					if (line3 !== undefined && line4 !== undefined) coordinates.push(checkLineIntersection(points3[0].x, points3[0].y, points3[1].x, points3[1].y, points4[0].x, points4[0].y, points4[1].x, points4[1].y));
-					if (line4 !== undefined && line1 !== undefined) coordinates.push(checkLineIntersection(points4[0].x, points4[0].y, points4[1].x, points4[1].y, points1[0].x, points1[0].y, points1[1].x, points1[1].y));
+					if (isDoneLine1 && isDoneLine2) coordinates.push(checkLineIntersection(points1[0].x, points1[0].y, points1[1].x, points1[1].y, points2[0].x, points2[0].y, points2[1].x, points2[1].y));
+					if (isDoneLine2 && isDoneLine3) coordinates.push(checkLineIntersection(points2[0].x, points2[0].y, points2[1].x, points2[1].y, points3[0].x, points3[0].y, points3[1].x, points3[1].y));
+					if (isDoneLine3 && isDoneLine4) coordinates.push(checkLineIntersection(points3[0].x, points3[0].y, points3[1].x, points3[1].y, points4[0].x, points4[0].y, points4[1].x, points4[1].y));
+					if (isDoneLine4 && isDoneLine1) coordinates.push(checkLineIntersection(points4[0].x, points4[0].y, points4[1].x, points4[1].y, points1[0].x, points1[0].y, points1[1].x, points1[1].y));
 					let a = document.createElement('a');
 					a.href = URL.createObjectURL(new Blob([JSON.stringify(coordinates)], {type: 'application/json'}));
 					a.download = 'model_data.json';
@@ -492,6 +507,57 @@
 			mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 			mouse.z = 0;
   			mouse.unproject(camera);
+			if (isHoldLine1) {
+				scene.remove(line1);
+				points1 = [];
+				points1.push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				points1.push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				line1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1), new THREE.LineBasicMaterial({ color: 0xff0000 }));
+				scene.add(line1);
+			}
+			if (isHoldLine2) {
+				scene.remove(line2);
+				points2 = [];
+				points2.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
+				points2.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
+				line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+				scene.add(line2);
+			}
+			if (isHoldLine3) {
+				scene.remove(line3);
+				points3 = [];
+				points3.push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				points3.push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				line3 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points3), new THREE.LineBasicMaterial({ color: 0xff0000 }));
+				scene.add(line3);
+			}
+			if (isHoldLine4) {
+				scene.remove(line4);
+				points4 = [];
+				points4.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
+				points4.push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
+				line4 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points4), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+				scene.add(line4);
+			}
+		}
+
+		function onMouseUp(event) {
+			if (isHoldLine1) {
+				isHoldLine1 = false;
+				isDoneLine1 = true;
+			}
+			if (isHoldLine2) {
+				isHoldLine2 = false;
+				isDoneLine2 = true;
+			}
+			if (isHoldLine3) {
+				isHoldLine3 = false;
+				isDoneLine3 = true;
+			}
+			if (isHoldLine4) {
+				isHoldLine4 = false;
+				isDoneLine4 = true;
+			}
 		}
 
 		//
