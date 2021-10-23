@@ -20,12 +20,13 @@
 
 <body>
 	<div id="info">
-		<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - MMDLoader test<br />
+		<!--<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - MMDLoader test<br />
 		<a href="https://github.com/mrdoob/three.js/tree/master/examples/models/mmd#readme" target="_blank"
 			rel="noopener">MMD Assets license</a><br />
 		Copyright
 		<a href="https://sites.google.com/view/evpvp/" target="_blank" rel="noopener">Model Data</a>
-		<a href="http://seiga.nicovideo.jp/seiga/im5162984" target="_blank" rel="noopener">Pose Data</a>
+		<a href="http://seiga.nicovideo.jp/seiga/im5162984" target="_blank" rel="noopener">Pose Data</a>-->
+		[1] [2] [3] [4] [Q] [A] [D] [S]
 	</div>
 
 	<script src="js/libs/ammo.wasm.js"></script>
@@ -90,17 +91,19 @@
 
 		let camera, scene, renderer, effect;
 		let mesh, helper;
-		let modelIdx = 0, isZoom = false, mouse = new THREE.Vector3();
+		
+		const MODELS = 3;
 		let zero = new THREE.Vector3(0, 0, 0);
-		let points1 = [[zero, zero], [zero, zero], [zero, zero]];
-		let points2 = [[zero, zero], [zero, zero], [zero, zero]];
-		let points3 = [[zero, zero], [zero, zero], [zero, zero]];
-		let points4 = [[zero, zero], [zero, zero], [zero, zero]];
-		let line1 = [null, null, null], line2 = [null, null, null], line3 = [null, null, null], line4 = [null, null, null];
-		let line5 = [null, null, null], line6 = [null, null, null], line7 = [null, null, null], line8 = [null, null, null];
-		let isHoldLine1 = [false, false, false], isHoldLine2 = [false, false, false], isHoldLine3 = [false, false, false], isHoldLine4 = [false, false, false];
-		let isDoneLine1 = [false, false, false], isDoneLine2 = [false, false, false], isDoneLine3 = [false, false, false], isDoneLine4 = [false, false, false];
-		let lineLocations = [[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]];
+		let modelIdx = 0, isZoom = false, mouse = new THREE.Vector3();
+		let isHoldLines = [], isDoneLines = [], lineLocations = [], lines = [], points = [];
+
+		for (let i = 0; i < MODELS; i++) {
+			isHoldLines.push([false, false, false, false]); // 四條線是否抓著
+			isDoneLines.push([false, false, false, false]); // 四條線是否完成
+			lineLocations.push([null, null, null, null, null, null, null, null]); // 四個滑鼠位置的 x,y 座標
+			lines.push([null, null, null, null, null, null, null, null]); // 八條線
+			points.push([zero, zero], [zero, zero], [zero, zero], [zero, zero]); // 四條線的頭尾座標
+		}
 
 		const vpds = [];
 
@@ -231,22 +234,24 @@
 			cameracontrols.enableRotate = false;
 
 			//
-
+			const gui = new GUI();
+			const controls = {};
 			function initGui() {
 
-				const gui = new GUI();
+				// const gui = new GUI();
 
 				const dictionary = mesh.morphTargetDictionary;
 
-				const controls = {};
+				// const controls = {};
 				const keys = [];
 
+				const models = gui.addFolder('Models');
 				const poses = gui.addFolder('Poses');
 				const morphs = gui.addFolder('Morphs');
 
 				function getBaseName(s) {
 
-					return s.slice(s.lastIndexOf('/') + 1);
+					return s.slice(s.lastIndexOf('/') + 1).replace('.pmx', '').replace('『', '').replace('(Kokoro Amamiya)』', '');
 
 				}
 
@@ -258,6 +263,7 @@
 
 					}
 
+					controls.model = - 1;
 					controls.pose = - 1;
 
 					for (let i = 0; i < vpdFiles.length; i++) {
@@ -275,6 +281,20 @@
 						keys.push(key);
 
 					}
+
+				}
+
+				function initModels() {
+
+					const files = { default: - 1 };
+
+					for (let i = 0; i < modelFiles.length; i++) {
+
+						files[getBaseName(modelFiles[i])] = i;
+
+					}
+
+					models.add(controls, 'model', files).onChange(onChangeModel);
 
 				}
 
@@ -330,14 +350,36 @@
 
 				}
 
+				function onChangeModel() {
+
+					const index = parseInt(controls.model);
+					for (let i = 0; i < lines[modelIdx].length; i++) {
+						if (lines[modelIdx][i] !== null) scene.remove(lines[modelIdx][i]);
+					}
+					modelIdx = index === -1 ? 0 : index;
+					loader.load(modelFiles[modelIdx], function (object) {
+						scene.remove(mesh);
+						mesh = object;
+						mesh.position.y = - 10;
+						scene.add(mesh);
+					}, onProgress, null);
+					for (let i = 0; i < lines[modelIdx].length; i++) {
+						if (lines[modelIdx][i] !== null) scene.add(lines[modelIdx][i]);
+					}
+
+				}
+
 				initControls();
 				initKeys();
+				initModels();
 				initPoses();
 				initMorphs();
 
 				onChangeMorph();
 				onChangePose();
+				onChangeModel();
 
+				models.open();
 				poses.open();
 				morphs.open();
 
@@ -366,168 +408,133 @@
 				}
 				// 1
 				if (keyCode === 49) {
-					if (line1[modelIdx] !== null) scene.remove(line1[modelIdx]);
-					if (line5[modelIdx] !== null) scene.remove(line5[modelIdx]);
-					points1[modelIdx] = [];
-					points1[modelIdx].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-					points1[modelIdx].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-					line1[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1[modelIdx]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
-					scene.add(line1[modelIdx]);
-					isHoldLine1[modelIdx] = true;
-					isDoneLine1[modelIdx] = false;
+					if (lines[modelIdx][0] !== null) scene.remove(lines[modelIdx][0]);
+					if (lines[modelIdx][4] !== null) scene.remove(lines[modelIdx][4]);
+					lines[modelIdx][4] = null;
+					points[modelIdx][0] = [];
+					points[modelIdx][0].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+					points[modelIdx][0].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+					lines[modelIdx][0] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][0]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
+					scene.add(lines[modelIdx][0]);
+					isHoldLines[modelIdx][0] = true;
+					isDoneLines[modelIdx][0] = false;
+					lineLocations[modelIdx][0] = null;
+					lineLocations[modelIdx][1] = null;
+					document.body.style.cursor = 'move';
 				}
 				// 2
 				if (keyCode === 50) {
-					if (line2[modelIdx] !== null) scene.remove(line2[modelIdx]);
-					if (line6[modelIdx] !== null) scene.remove(line6[modelIdx]);
-					points2[modelIdx] = [];
-					points2[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
-					points2[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
-					line2[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2[modelIdx]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
-					scene.add(line2[modelIdx]);
-					isHoldLine2[modelIdx] = true;
-					isDoneLine2[modelIdx] = false;
+					if (lines[modelIdx][1] !== null) scene.remove(lines[modelIdx][1]);
+					if (lines[modelIdx][5] !== null) scene.remove(lines[modelIdx][5]);
+					lines[modelIdx][5] = null;
+					points[modelIdx][1] = [];
+					points[modelIdx][1].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
+					points[modelIdx][1].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
+					lines[modelIdx][1] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][1]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+					scene.add(lines[modelIdx][1]);
+					isHoldLines[modelIdx][1] = true;
+					isDoneLines[modelIdx][1] = false;
+					lineLocations[modelIdx][2] = null;
+					lineLocations[modelIdx][3] = null;
+					document.body.style.cursor = 'move';
 				}
 				// 3
 				if (keyCode === 51) {
-					if (line3[modelIdx] !== null) scene.remove(line3[modelIdx]);
-					if (line7[modelIdx] !== null) scene.remove(line7[modelIdx]);
-					points3[modelIdx] = [];
-					points3[modelIdx].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-					points3[modelIdx].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-					line3[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points3[modelIdx]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
-					scene.add(line3[modelIdx]);
-					isHoldLine3[modelIdx] = true;
-					isDoneLine3[modelIdx] = false;
+					if (lines[modelIdx][2] !== null) scene.remove(lines[modelIdx][2]);
+					if (lines[modelIdx][6] !== null) scene.remove(lines[modelIdx][6]);
+					lines[modelIdx][6] = null;
+					points[modelIdx][2] = [];
+					points[modelIdx][2].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+					points[modelIdx][2].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+					lines[modelIdx][2] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][2]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
+					scene.add(lines[modelIdx][2]);
+					isHoldLines[modelIdx][2] = true;
+					isDoneLines[modelIdx][2] = false;
+					lineLocations[modelIdx][4] = null;
+					lineLocations[modelIdx][5] = null;
+					document.body.style.cursor = 'move';
 				}
 				// 4
 				if (keyCode === 52) {
-					if (line4[modelIdx] !== null) scene.remove(line4[modelIdx]);
-					if (line8[modelIdx] !== null) scene.remove(line8[modelIdx]);
-					points4[modelIdx] = [];
-					points4[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
-					points4[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
-					line4[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points4[modelIdx]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
-					scene.add(line4[modelIdx]);
-					isHoldLine4[modelIdx] = true;
-					isDoneLine4[modelIdx] = false;
+					if (lines[modelIdx][3] !== null) scene.remove(lines[modelIdx][3]);
+					if (lines[modelIdx][7] !== null) scene.remove(lines[modelIdx][7]);
+					lines[modelIdx][7] = null;
+					points[modelIdx][3] = [];
+					points[modelIdx][3].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
+					points[modelIdx][3].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
+					lines[modelIdx][3] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][3]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+					scene.add(lines[modelIdx][3]);
+					isHoldLines[modelIdx][3] = true;
+					isDoneLines[modelIdx][3] = false;
+					lineLocations[modelIdx][6] = null;
+					lineLocations[modelIdx][7] = null;
+					document.body.style.cursor = 'move';
 				}
 				// Q
 				if (keyCode === 81) {
-					if (isDoneLine1[modelIdx]) {
-						if (line5[modelIdx] !== null) scene.remove(line5[modelIdx]);
-						line5[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1[modelIdx]), new THREE.LineBasicMaterial({ color: 0x800080 }));
-						line5[modelIdx].scale.multiply(new THREE.Vector3(-1, 1, 1));
-						scene.add(line5[modelIdx]);
+					if (isDoneLines[modelIdx][0]) {
+						if (lines[modelIdx][4] !== null) scene.remove(lines[modelIdx][4]);
+						lines[modelIdx][4] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][0]), new THREE.LineBasicMaterial({ color: 0x800080 }));
+						lines[modelIdx][4].scale.multiply(new THREE.Vector3(-1, 1, 1));
+						scene.add(lines[modelIdx][4]);
 					}
-					if (isDoneLine2[modelIdx]) {
-						if (line6[modelIdx] !== null) scene.remove(line6[modelIdx]);
-						line6[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2[modelIdx]), new THREE.LineBasicMaterial({ color: 0x87cefa }));
-						line6[modelIdx].scale.multiply(new THREE.Vector3(-1, 1, 1));
-						scene.add(line6[modelIdx]);
+					if (isDoneLines[modelIdx][1]) {
+						if (lines[modelIdx][5] !== null) scene.remove(lines[modelIdx][5]);
+						lines[modelIdx][5] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][1]), new THREE.LineBasicMaterial({ color: 0x87cefa }));
+						lines[modelIdx][5].scale.multiply(new THREE.Vector3(-1, 1, 1));
+						scene.add(lines[modelIdx][5]);
 					}
-					if (isDoneLine3[modelIdx]) {
-						if (line7[modelIdx] !== null) scene.remove(line7[modelIdx]);
-						line7[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points3[modelIdx]), new THREE.LineBasicMaterial({ color: 0x800080 }));
-						line7[modelIdx].scale.multiply(new THREE.Vector3(-1, 1, 1));
-						scene.add(line7[modelIdx]);
+					if (isDoneLines[modelIdx][2]) {
+						if (lines[modelIdx][6] !== null) scene.remove(lines[modelIdx][6]);
+						lines[modelIdx][6] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][2]), new THREE.LineBasicMaterial({ color: 0x800080 }));
+						lines[modelIdx][6].scale.multiply(new THREE.Vector3(-1, 1, 1));
+						scene.add(lines[modelIdx][6]);
 					}
-					if (isDoneLine4[modelIdx]) {
-						if (line8[modelIdx] !== null) scene.remove(line8[modelIdx]);
-						line8[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points4[modelIdx]), new THREE.LineBasicMaterial({ color: 0x87cefa }));
-						line8[modelIdx].scale.multiply(new THREE.Vector3(-1, 1, 1));
-						scene.add(line8[modelIdx]);
+					if (isDoneLines[modelIdx][3]) {
+						if (lines[modelIdx][7] !== null) scene.remove(lines[modelIdx][7]);
+						lines[modelIdx][7] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][3]), new THREE.LineBasicMaterial({ color: 0x87cefa }));
+						lines[modelIdx][7].scale.multiply(new THREE.Vector3(-1, 1, 1));
+						scene.add(lines[modelIdx][7]);
 					}
 				}
 				// A
 				if (keyCode === 65) {
-					if (line1[modelIdx] !== null) scene.remove(line1[modelIdx]);
-					if (line2[modelIdx] !== null) scene.remove(line2[modelIdx]);
-					if (line3[modelIdx] !== null) scene.remove(line3[modelIdx]);
-					if (line4[modelIdx] !== null) scene.remove(line4[modelIdx]);
-					if (line5[modelIdx] !== null) scene.remove(line5[modelIdx]);
-					if (line6[modelIdx] !== null) scene.remove(line6[modelIdx]);
-					if (line7[modelIdx] !== null) scene.remove(line7[modelIdx]);
-					if (line8[modelIdx] !== null) scene.remove(line8[modelIdx]);
-					if (--modelIdx < 0) modelIdx = modelFiles.length - 1;
+					for (let i = 0; i < lines[modelIdx].length; i++) {
+						if (lines[modelIdx][i] !== null) scene.remove(lines[modelIdx][i]);
+					}
+					if (--modelIdx < 0) modelIdx = MODELS - 1;
 					loader.load(modelFiles[modelIdx], function (object) {
 						scene.remove(mesh);
 						mesh = object;
 						mesh.position.y = - 10;
 						scene.add(mesh);
 					}, onProgress, null);
-					if (line1[modelIdx] !== null) scene.add(line1[modelIdx]);
-					if (line2[modelIdx] !== null) scene.add(line2[modelIdx]);
-					if (line3[modelIdx] !== null) scene.add(line3[modelIdx]);
-					if (line4[modelIdx] !== null) scene.add(line4[modelIdx]);
-					if (line5[modelIdx] !== null) scene.add(line5[modelIdx]);
-					if (line6[modelIdx] !== null) scene.add(line6[modelIdx]);
-					if (line7[modelIdx] !== null) scene.add(line7[modelIdx]);
-					if (line8[modelIdx] !== null) scene.add(line8[modelIdx]);
+					for (let i = 0; i < lines[modelIdx].length; i++) {
+						if (lines[modelIdx][i] !== null) scene.add(lines[modelIdx][i]);
+					}
+					controls.model = modelIdx;
+					gui.updateDisplay()
 				}
 				// D
 				if (keyCode === 68) {
-					if (line1[modelIdx] !== null) scene.remove(line1[modelIdx]);
-					if (line2[modelIdx] !== null) scene.remove(line2[modelIdx]);
-					if (line3[modelIdx] !== null) scene.remove(line3[modelIdx]);
-					if (line4[modelIdx] !== null) scene.remove(line4[modelIdx]);
-					if (line5[modelIdx] !== null) scene.remove(line5[modelIdx]);
-					if (line6[modelIdx] !== null) scene.remove(line6[modelIdx]);
-					if (line7[modelIdx] !== null) scene.remove(line7[modelIdx]);
-					if (line8[modelIdx] !== null) scene.remove(line8[modelIdx]);
-					if (++modelIdx === modelFiles.length) modelIdx = 0;
+					for (let i = 0; i < lines[modelIdx].length; i++) {
+						if (lines[modelIdx][i] !== null) scene.remove(lines[modelIdx][i]);
+					}
+					if (++modelIdx === MODELS) modelIdx = 0;
 					loader.load(modelFiles[modelIdx], function (object) {
 						scene.remove(mesh);
 						mesh = object;
 						mesh.position.y = - 10;
 						scene.add(mesh);
 					}, onProgress, null);
-					if (line1[modelIdx] !== null) scene.add(line1[modelIdx]);
-					if (line2[modelIdx] !== null) scene.add(line2[modelIdx]);
-					if (line3[modelIdx] !== null) scene.add(line3[modelIdx]);
-					if (line4[modelIdx] !== null) scene.add(line4[modelIdx]);
-					if (line5[modelIdx] !== null) scene.add(line5[modelIdx]);
-					if (line6[modelIdx] !== null) scene.add(line6[modelIdx]);
-					if (line7[modelIdx] !== null) scene.add(line7[modelIdx]);
-					if (line8[modelIdx] !== null) scene.add(line8[modelIdx]);
+					for (let i = 0; i < lines[modelIdx].length; i++) {
+						if (lines[modelIdx][i] !== null) scene.add(lines[modelIdx][i]);
+					}
+					controls.model = modelIdx;
+					gui.updateDisplay()
 				}
 				// S
 				if (keyCode === 83) {
-					let lineLocation;
-					for (let i = 0; i < modelFiles.length; i++) {
-						if (isDoneLine1[i] && isDoneLine2[i]) {
-							lineLocation = checkLineIntersection(points1[i][0].x, points1[i][0].y, points1[i][1].x, points1[i][1].y, points2[i][0].x, points2[i][0].y, points2[i][1].x, points2[i][1].y);
-							lineLocations[i][0] = lineLocation.x;
-							lineLocations[i][1] = lineLocation.y;
-						} else {
-							lineLocations[i][0] = 0;
-							lineLocations[i][1] = 0;
-						}
-						if (isDoneLine2[i] && isDoneLine3[i]) {
-							lineLocation = checkLineIntersection(points2[i][0].x, points2[i][0].y, points2[i][1].x, points2[i][1].y, points3[i][0].x, points3[i][0].y, points3[i][1].x, points3[i][1].y);
-							lineLocations[i][2] = lineLocation.x;
-							lineLocations[i][3] = lineLocation.y;
-						} else {
-							lineLocations[i][2] = 0;
-							lineLocations[i][3] = 0;
-						}
-						if (isDoneLine3[i] && isDoneLine4[i]) {
-							lineLocation = checkLineIntersection(points3[i][0].x, points3[i][0].y, points3[i][1].x, points3[i][1].y, points4[i][0].x, points4[i][0].y, points4[i][1].x, points4[i][1].y);
-							lineLocations[i][4] = lineLocation.x;
-							lineLocations[i][5] = lineLocation.y;
-						} else {
-							lineLocations[i][4] = 0;
-							lineLocations[i][5] = 0;
-						}
-						if (isDoneLine4[i] && isDoneLine1[i]) {
-							lineLocation = checkLineIntersection(points4[i][0].x, points4[i][0].y, points4[i][1].x, points4[i][1].y, points1[i][0].x, points1[i][0].y, points1[i][1].x, points1[i][1].y);
-							lineLocations[i][6] = lineLocation.x;
-							lineLocations[i][7] = lineLocation.y;
-						} else {
-							lineLocations[i][6] = 0;
-							lineLocations[i][7] = 0;
-						}
-					}
 					let model_data = {
 						modellist: [{
 								location: modelFiles[0],
@@ -570,21 +577,6 @@
 				return false;
 			}
 
-			function checkLineIntersection(line1StartX, line1StartY, line1EndX, line1EndY, line2StartX, line2StartY, line2EndX, line2EndY) {
-				let denominator, a, b, numerator1, numerator2, result = { x: null, y: null };
-				denominator = ((line2EndY - line2StartY) * (line1EndX - line1StartX)) - ((line2EndX - line2StartX) * (line1EndY - line1StartY));
-				if (denominator === 0) return result;
-				a = line1StartY - line2StartY;
-				b = line1StartX - line2StartX;
-				numerator1 = ((line2EndX - line2StartX) * a) - ((line2EndY - line2StartY) * b);
-				numerator2 = ((line1EndX - line1StartX) * a) - ((line1EndY - line1StartY) * b);
-				a = numerator1 / denominator;
-				b = numerator2 / denominator;
-				result.x = line1StartX + (a * (line1EndX - line1StartX));
-				result.y = line1StartY + (a * (line1EndY - line1StartY));
-				return result;
-			};
-
 		}
 
 		//
@@ -607,56 +599,68 @@
 			mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 			mouse.z = 0;
   			mouse.unproject(camera);
-			if (isHoldLine1[modelIdx]) {
-				scene.remove(line1[modelIdx]);
-				points1[modelIdx] = [];
-				points1[modelIdx].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-				points1[modelIdx].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-				line1[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points1[modelIdx]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
-				scene.add(line1[modelIdx]);
+			if (isHoldLines[modelIdx][0]) {
+				scene.remove(lines[modelIdx][0]);
+				points[modelIdx][0] = [];
+				points[modelIdx][0].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				points[modelIdx][0].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				lines[modelIdx][0] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][0]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
+				scene.add(lines[modelIdx][0]);
 			}
-			if (isHoldLine2[modelIdx]) {
-				scene.remove(line2[modelIdx]);
-				points2[modelIdx] = [];
-				points2[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
-				points2[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
-				line2[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points2[modelIdx]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
-				scene.add(line2[modelIdx]);
+			if (isHoldLines[modelIdx][1]) {
+				scene.remove(lines[modelIdx][1]);
+				points[modelIdx][1] = [];
+				points[modelIdx][1].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
+				points[modelIdx][1].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
+				lines[modelIdx][1] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][1]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+				scene.add(lines[modelIdx][1]);
 			}
-			if (isHoldLine3[modelIdx]) {
-				scene.remove(line3[modelIdx]);
-				points3[modelIdx] = [];
-				points3[modelIdx].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-				points3[modelIdx].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
-				line3[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points3[modelIdx]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
-				scene.add(line3[modelIdx]);
+			if (isHoldLines[modelIdx][2]) {
+				scene.remove(lines[modelIdx][2]);
+				points[modelIdx][2] = [];
+				points[modelIdx][2].push(new THREE.Vector3(mouse.x - 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				points[modelIdx][2].push(new THREE.Vector3(mouse.x + 0.5, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)), 10));
+				lines[modelIdx][2] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][2]), new THREE.LineBasicMaterial({ color: 0xff0000 }));
+				scene.add(lines[modelIdx][2]);
 			}
-			if (isHoldLine4[modelIdx]) {
-				scene.remove(line4[modelIdx]);
-				points4[modelIdx] = [];
-				points4[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
-				points4[modelIdx].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
-				line4[modelIdx] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points4[modelIdx]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
-				scene.add(line4[modelIdx]);
+			if (isHoldLines[modelIdx][3]) {
+				scene.remove(lines[modelIdx][3]);
+				points[modelIdx][3] = [];
+				points[modelIdx][3].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) - 0.5, 10));
+				points[modelIdx][3].push(new THREE.Vector3(mouse.x, mouse.y + (camera.zoom / (camera.zoom * camera.zoom)) + 0.5, 10));
+				lines[modelIdx][3] = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points[modelIdx][3]), new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+				scene.add(lines[modelIdx][3]);
 			}
 		}
 
 		function onMouseUp(event) {
-			if (isHoldLine1[modelIdx]) {
-				isHoldLine1[modelIdx] = false;
-				isDoneLine1[modelIdx] = true;
+			if (isHoldLines[modelIdx][0]) {
+				isHoldLines[modelIdx][0] = false;
+				isDoneLines[modelIdx][0] = true;
+				lineLocations[modelIdx][0] = mouse.x;
+				lineLocations[modelIdx][1] = mouse.y;
+				document.body.style.cursor = 'default';
 			}
-			if (isHoldLine2[modelIdx]) {
-				isHoldLine2[modelIdx] = false;
-				isDoneLine2[modelIdx] = true;
+			if (isHoldLines[modelIdx][1]) {
+				isHoldLines[modelIdx][1] = false;
+				isDoneLines[modelIdx][1] = true;
+				lineLocations[modelIdx][2] = mouse.x;
+				lineLocations[modelIdx][3] = mouse.y;
+				document.body.style.cursor = 'default';
 			}
-			if (isHoldLine3[modelIdx]) {
-				isHoldLine3[modelIdx] = false;
-				isDoneLine3[modelIdx] = true;
+			if (isHoldLines[modelIdx][2]) {
+				isHoldLines[modelIdx][2] = false;
+				isDoneLines[modelIdx][2] = true;
+				lineLocations[modelIdx][4] = mouse.x;
+				lineLocations[modelIdx][5] = mouse.y;
+				document.body.style.cursor = 'default';
 			}
-			if (isHoldLine4[modelIdx]) {
-				isHoldLine4[modelIdx] = false;
-				isDoneLine4[modelIdx] = true;
+			if (isHoldLines[modelIdx][3]) {
+				isHoldLines[modelIdx][3] = false;
+				isDoneLines[modelIdx][3] = true;
+				lineLocations[modelIdx][6] = mouse.x;
+				lineLocations[modelIdx][7] = mouse.y;
+				document.body.style.cursor = 'default';
 			}
 		}
 
